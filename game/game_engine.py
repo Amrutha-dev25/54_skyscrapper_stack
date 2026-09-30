@@ -238,9 +238,80 @@ class GameEngine:
         if not self.game_over:
             self.active_block.update(self.width)
 
+    @staticmethod
+    def _interpolate_color(first, second, amount):
+        return tuple(
+            round(start + (end - start) * amount)
+            for start, end in zip(first, second)
+        )
+
+    def render_background(self, screen):
+        progress = max(0, len(self.stack) - 1)
+        stages = [
+            (0, (28, 66, 112), (17, 34, 70)),
+            (8, (86, 52, 118), (39, 27, 75)),
+            (16, (18, 27, 67), (5, 10, 30)),
+            (28, (8, 12, 24), (1, 3, 9)),
+        ]
+
+        for index in range(len(stages) - 1):
+            start_progress, start_top, start_bottom = stages[index]
+            end_progress, end_top, end_bottom = stages[index + 1]
+            if progress <= end_progress:
+                amount = min(
+                    1.0,
+                    max(
+                        0.0,
+                        (progress - start_progress)
+                        / (end_progress - start_progress)
+                    )
+                )
+                top_color = self._interpolate_color(
+                    start_top,
+                    end_top,
+                    amount
+                )
+                bottom_color = self._interpolate_color(
+                    start_bottom,
+                    end_bottom,
+                    amount
+                )
+                break
+        else:
+            top_color = stages[-1][1]
+            bottom_color = stages[-1][2]
+
+        for y in range(self.height):
+            amount = y / max(1, self.height - 1)
+            color = self._interpolate_color(top_color, bottom_color, amount)
+            pygame.draw.line(screen, color, (0, y), (self.width, y))
+
+        if progress >= 12:
+            star_strength = min(1.0, (progress - 12) / 8)
+            star_color = self._interpolate_color(
+                (70, 80, 120),
+                (235, 240, 255),
+                star_strength
+            )
+            stars = (
+                (0.08, 0.18, 1),
+                (0.21, 0.09, 2),
+                (0.37, 0.27, 1),
+                (0.52, 0.13, 1),
+                (0.68, 0.23, 2),
+                (0.84, 0.08, 1),
+                (0.93, 0.31, 1),
+            )
+            for x_ratio, y_ratio, radius in stars:
+                pygame.draw.circle(
+                    screen,
+                    star_color,
+                    (round(self.width * x_ratio), round(self.height * y_ratio)),
+                    radius
+                )
+
     def render(self, screen):
-        # Existing background
-        screen.fill((24, 27, 36))
+        self.render_background(screen)
 
         # Title
         title_surf = self.font_title.render(
