@@ -1,6 +1,6 @@
 import random
 import pygame
-from game.block import Block
+from game.block import Block, OffcutDebris
 
 
 class GameEngine:
@@ -34,6 +34,7 @@ class GameEngine:
         # Task 2: Perfect placement state
         self.perfect_streak = 0
         self.perfect_popup_timer = 0
+        self.debris = []
 
         base_x = (self.width - self.base_width) // 2
         base_y = self.height - 60
@@ -133,6 +134,30 @@ class GameEngine:
                 # breaks the perfect streak.
                 self.perfect_streak = 0
 
+                if act.x < left:
+                    self.debris.append(
+                        OffcutDebris(
+                            act.x,
+                            act.y,
+                            left - act.x,
+                            act.height,
+                            act.color,
+                            horizontal_velocity=-2.0
+                        )
+                    )
+
+                if right < act.x + act.width:
+                    self.debris.append(
+                        OffcutDebris(
+                            right,
+                            act.y,
+                            act.x + act.width - right,
+                            act.height,
+                            act.color,
+                            horizontal_velocity=2.0
+                        )
+                    )
+
                 new_block_x = left
                 new_block_width = max(10.0, overlap)
 
@@ -158,6 +183,9 @@ class GameEngine:
 
                 for b in self.stack:
                     b.y += shift_amount
+
+                for debris in self.debris:
+                    debris.y += shift_amount
 
             # Spawn next active block
             self.spawn_active_block()
@@ -197,6 +225,15 @@ class GameEngine:
         # Countdown PERFECT! popup timer.
         if self.perfect_popup_timer > 0:
             self.perfect_popup_timer -= 1
+
+        for debris in self.debris:
+            debris.update()
+
+        self.debris = [
+            debris
+            for debris in self.debris
+            if not debris.is_finished(self.height)
+        ]
 
         if not self.game_over:
             self.active_block.update(self.width)
@@ -238,6 +275,9 @@ class GameEngine:
         # Render placed blocks
         for b in self.stack:
             b.render(screen)
+
+        for debris in self.debris:
+            debris.render(screen)
 
         # Task 2:
         # Display PERFECT! popup while timer is active.
